@@ -25,6 +25,9 @@ tr:nth-child(even) {
 .error {
   color: red;
 }
+.network-info {
+  color: green;
+}
 
 .wrapper {
   margin: 0 auto;

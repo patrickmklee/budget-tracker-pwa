@@ -1,16 +1,20 @@
 // Uncomment the lines below to set up the cache files
-const OFFLINE_URL = 'offline.html'
-const CACHE_NAME = 'budget-tracker-cache-v1';
-const OFFLINE_CACHE_NAME = 'budget-tracker-offline-cache-v1';
-const TRANSACTION_CACHE_NAME = 'budget-tracker-trans-cache-v1';
+
+const CACHE_NAME = 'budget-tracker-cache-4';
+const DATA_CACHE_NAME = 'budget-tracker-data-cache-v3';
+const TRANSACTION_CACHE_NAME = 'budget-tracker-trans-cache-v3';
+const TRANSACTION_URL = ['/api/transaction']
+
 
 const FILES_TO_CACHE = [
   '/',
   '/index.html',
-//   '/offline.html',
   '/manifest.json',
-  // '/assets/js/index.js',
-  '/assets/js/index.js',
+  // '/assets/js/vendor/chart-min.js',
+  // '/assets/css/vendor/font-awesome.css',
+  '/idb.js',
+  // '/service-worker.js',
+  '/assets/js/script.js',
   '/assets/css/styles.css',
   '/assets/icons/icon-72x72.png',
   '/assets/icons/icon-96x96.png',
@@ -19,40 +23,25 @@ const FILES_TO_CACHE = [
   '/assets/icons/icon-152x152.png',
   '/assets/icons/icon-192x192.png',
   '/assets/icons/icon-384x384.png',
-  '/assets/icons/icon-512x512.png',
+  '/assets/icons/icon-512x512.png'
 ];
 
-const OFFLINE_TRANSACTIONS = [];
-// Install the service worker
-// YOUR CODE HERE
-//
 
 self.addEventListener('install', function(evt)  {
     console.log('================== [Service Worker] CACHING Install ====================');   
-    evt.waitUntil(( async () => {
-        const cache  = await caches.open(CACHE_NAME);
-            // .open(CACHE_NAME)
-            // .then(cache => {
-        console.log("Your files pre-cached");
-        await cache.addAll(FILES_TO_CACHE);
-        })());
+    evt.waitUntil( (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      cache.addAll(FILES_TO_CACHE);
+      // const transactionCache = await caches.open(TRANSACTION_CACHE_NAME);
+      // transactionCache.addAll(TRANSACTION_URL);
+    })
+    ())
+    // cacheOfflineFiles();
+    // cself.ski}
     self.skipWaiting();
+    
 });
-// });
 
-// self.addEventListener('install', (evt)  => {
-//     console.log('================== [Service Worker] Offline Install ====================');   
-//     evt.waitUntil(( async () => {
-//     //     fetch(OFFLINE_URL, { credentials: 'include' }).then(response =>
-//     //         caches.open(CACHE_NAME).then(cache => cache.put(OFFLINE_URL, response)),
-//     //       ),
-//     // );
-//         const cache = await caches.open(CACHE_NAME);
-//         // Setting {cache: 'reload'} in the new request will ensure that the response
-//         // isn't fulfilled from the HTTP cache; i.e., it will be from the network.
-//         await cache.add(new Request(OFFLINE_URL, {cache: 'reload'})); 
-//     })
-//     );
 
 // });
 
@@ -68,236 +57,142 @@ self.addEventListener('install', function(evt)  {
 //         await self.registration.navigationPreload.enable();
 //       }
 //     })());
-
-self.addEventListener('activate', function(evt) {
+// self.addEventListener('activate', evt => {
+//   // console.log('================== [Service Worker] Activation ====================');   
+//   evt.waitUntil( async function() {
+//     if (self.registration.navigationPreload) {
+//       // Enable navigation preloads!
+//       await self.registration.navigationPreload.enable();
+//       console.log('========= PRELOAD FEATURE ENABLED ============')
+//     }
+//   }());
+// })
+self.addEventListener('activate', evt => {
     console.log('================== [Service Worker] Activation ====================');   
     evt.waitUntil(
-        caches.keys().then(keyList => {
+      caches.keys().then(keyList => {
             return Promise.all(
                 keyList.map(key => {
-                    console.log(key)
-                    if (key !== CACHE_NAME && key !== OFFLINE_CACHE_NAME && key !== TRANSACTION_CACHE_NAME) {
+                    // console.log(key)
+                    // if (key === TRANSACTION_CACHE_NAME) {
+                    //   caches.delete(key);
+                    //   caches.open(TRANSACTION_CACHE_NAME).then (cache => {
+                    //     fetch(TRANSACTION_URL).then( response => {
+                    //       if (response.status===200) {
+                    //         cache.put(TRANSACTION_URL, response.clone());
+                    //       }
+                    //     return response;
+                    //     })
+                    //   })
+                    // } else
+                     if (key !== CACHE_NAME && key !== DATA_CACHE_NAME) {
                         console.log('Removing old cache data', key);
                         return caches.delete(key);
                     }
-                })
-            );
-        })
-    );
+                  })
+            )
+          })
+        
+          )
+            
+    
     self.clients.claim();
 });
+
+
 // Intercept fetch requests
 // YOUR CODE HERE
 //
 
-// addEventListener('fetch', event => {
-//     event.waitUntil(async function() {
-//       // Exit early if we don't have access to the client.
-//       // Eg, if it's cross-origin.
-//       if (!event.clientId) return;
+self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
+  const requestURL = new URL(event.request.url);
+  if (requestURL.origin === location.origin) {
+    event.respondWith(async function() {
+      // Respond from the cache if we can
+      const cachedResponse = await caches.match(event.request);
+      if (cachedResponse) return cachedResponse;
+
+      // Else, use the preloaded response, if it's there
+      const response = await event.preloadResponse;
+      if (response) return response;
+
+      // Else try the network.
+      return fetch(event.request);
+  }());
+}
+});
+
+self.addEventListener('fetch', evt => {
+  const requestURL = new URL(evt.request.url);
+  if (requestURL.origin === location.origin) {
+    if (requestURL.pathname.match(/api\/transaction\/$/)) {
+      // console.log(evt.request);
+      if (evt.request.method === 'GET') return;
+        evt.respondWith(
+          caches
+          .open(TRANSACTION_CACHE_NAME)
+          .then(cache => {
+            fetch(evt.request)
+            .then(response => {
+              // console.log(response);
+                if ( response.status === 200 ) { 
+                  return response
+                  // return response.clone()
+                }
+            }).catch(err => {    
+              saveRecord(evt.request.body);
+              console.log('code: '+err.statusCode+'\nMessage: '+err.statusText)
+            })
+
+          
+        })
+        .catch( err =>  { console.log(err) })
+        )
+      }
   
-//       // Get the client.
-//       const client = await clients.get(event.clientId);
-//       // Exit early if we don't get the client.
-//       // Eg, if it closed.
-//       if (!client) return;
-  
-//       // Send a message to the client.
-//       client.postMessage({
-//         msg: "Hey I just got a fetch from you!",
-//         url: event.request.url
-//       });
-  
-//     }());
-//   });
+    // } else if (requestURL.pathname.match('/\/[(\w)+|$]/')) {
+    // console.log('MATCH 2');
+    // evt.respondWith(
+    // caches.match(evt.request).then(function(response) {
+    // if(response) {
+    //   return response;
+    // }
+    // else if (evt.request.headers.get('accept').includes('text/html')) {
+    //       // return the cached home page for all requests for html pages
+    //       // let root = evt.request.pathname.split()
+    //       console.log('##### SECOND IF #### ')
+    //       console.log(evt)
+    //       return caches.match('/');
+    // } else {
+    //     return fetch(evt.request);
+    // }
+    // })
+    // }
+  }
+});
+                // })
+                // .catch(  e => { console.log(e) } )
+                // .then(responseData => {
+                //     cache.put(evt.request,JSON.parse(responseData));
+                // })
+    // }
+              // }
+  // });
 
-
-// self.addEventListener('fetch', (evt) => {
-//     if (evt.request.mode === 'navigate') {
-//         evt.respondWith((async () => {
-//             try {
-//                 // eturn evt.respondWith(
-//                 const networkResponse = await fetch(evt.request);
-//                 return networkResponse;
-//             } catch(error) {
-//                 console.log('Fetch failed; returning offline page instead.', error);
-
-//                 const cache = await caches.open(CACHE_NAME);
-//                 const cachedResponse = await cache.match(OFFLINE_URL);
-//                 return cachedResponse;
-//             // .catch(() => caches.match(OFFLINE_URL))
-//         }
-//     })());
-//   }
-
+            // async () => {
+            // const cache = await caches.open(TRANSACTION_CACHE_NAME);
+            // try {
+            //     const response = await fetch(evt.request);
+            //     console.log(response);
+            //     if (response.status === 200) {
+            //         cache.put(evt.request, response);
+            //     }
+            //     return response.clone();
+            // } catch (err) {
+                
+            //     return err;
+            // }
+//     });
 // });
   
-    // if (evt.request.url.includes('/offline')) {
-    //     evt.respondWith(
-    //     // urn new Promise( (resolve,reject) => {
-    //         caches
-    //         .open(TRANSACTION_CACHE_NAME)
-    //         .then( cache => {
-    //             return cache.add(evt.request)
-    //             }
-    //         ) 
-    //         .catch(err => {
-    //             console.log(err)
-    //         })
-            
-    //     // })
-    //     );
-    //     return 
-    // }
-    //     evt.respondWith(
-    //         fetch(evt.request)
-    //         .then(response => {
-    //             // if (response.status === 200) {
-    //                 return response
-    //             // }
-    //             // Promise.reject(evt.request);
-    //         })
-    //         .catch( function() {
-    //             console.log(JSON.stringify(evt.request,null,4));
-    //             caches
-    //             .open(TRANSACTION_CACHE_NAME)
-    //             .then(cache => {
-    //                 cache.add(evt.request);
-    //             })
-    //             .catch(err => console.log(err));
-
-    //         })
-            // caches
-            //     .open(DATA_CACHE_NAME)
-            //     .then(cache => {
-            //         return fetch(evt.request)
-            //             .then(response => {
-            //                 if (response.status === 200) {
-            //                     cache.put(evt.request.url, response.clone());
-            //                 }
-            //                 return response;
-            //                 })
-            //             .catch(err => {
-            // // Network request failed, try to get it from the cache.
-            // return cache.match(evt.request);
-            //             });
-            //     })
-            //     .catch(err => console.log(err))
-    //     );
-    //     return;
-    // }
-    
-self.addEventListener('fetch', (evt) => {
-    if (!(evt.request.url.includes('/api')) ) return;
-    evt.waitUntil( async () => {
-        // const cache = await caches.open(TRANSACTION_CACHE_NAME);
-        try {
-            return caches.add(evt.request);
-        } catch (err) {
-            localStorage.setItem(Date.now(), evt.request.body);
-            return err;
-        }
-    });
-});
-            // try {
-            // let response = await fetch(evt.request);
-
-        // const cache = await caches.open(TRANSACTION_CACHE_NAME);
-    
-            // if (evt.request.method === 'POST') {
-    
-            // // try {
-            // //     fetch(evt.request).then(response => {   
-    //                 if (response.status === 200) {
-    //                     return response
-    //                 } else {
-    //                     throw Error('No Network Connection!')
-    //                 }
-    //             })
-    //         } catch( err) {
-    //             console.log(err);
-    //             return err;
-    //         }
-    //     });
-    // }
-
-                
-            // } catch (err) {
-            //     // .then()
-            // // .catch( function() {
-            //     localStorage.setItem(localStorage.length, evt.request);    
-                
-            // }
-                
-                // cache.add(evt.request);
-                    // .open( TRANSACTION_CACHE_NAME )
-                    // .then( transactionCache => {
-                    //         transactionCache.match(OFFLINE_URL)
-                    //         .then( offlineData => {
-                    //             if (offlineData !== undefined) {
-                    //             console.log(JSON.stringify(offlineData,null,2));
-                    //             const updatedData = offlineData.transactions.unshift(evt.request.body); //(evt.request.body,{...offlineData})
-                    //             // evt.request.body) ///(OFFLINE_URL, updatedData) ;//(evt.request.body,{...offlineData}));
-                    //             transactionCache.add(offlineData);
-                    //             // return new Response(updatedData);
-                    //         })
-                    //         .catch( function() {
-                    //             transactionCache.add(new Request(evt.request));
-                    //             // return new Response(JSON.parse(evt.request.body));                           
-                    //         });
-                            
-                    // })
-                    // .catch(err => console.log(err));
-                // })
-    //     // return;
-    //     })());
-        
-    // } 
-    
-    // if (evt.request.url.includes('/api')) {
-    //     // && (requestURL.pathname.match('/api/'))) {
-    // else {        
-    //     return evt.respondWith(
-    //         fetch(evt.request)
-    //             .then(response => {
-    //             if (response.status === 200) {       
-    //                 console.log('=== Caching request '+requestURL);
-    //             cache.put(evt.request,response.clone());
-    //         }
-    //         return response
-            
-    //     })
-    //     .catch( err => {
-    //         return cache.match(evt.request)
-    //     }
-    // }
-        
-                // caches
-                // .open(TRANSACTION_CACHE_NAME)
-                // .then(cache => {
-            
-                    
-            // })
-            // .catch(err => console.log(err));
-self.addEventListener('fetch', evt => {
-    if (evt.request.method !== 'GET') {
-        return ;
-    }
-    const requestURL = new URL(evt.request.url);
-    if (requestURL.origin === location.origin) {
-        return evt.respondWith(
-            fetch(evt.request)
-            .catch(function() {
-                return caches.match(evt.request).then(function(response) {
-                if (response) {
-                    return response;
-                } else if (evt.request.headers.get('accept').includes('text/html')) {
-                    // return the cached home page for all requests for html pages
-                    return caches.match('/');
-                    }
-                        });
-                })
-        )
-    }
-});
-    

@@ -5,28 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <meta name="theme-color" content="#317EFB">
-  <link rel="shortcut icon" href="assets/icons/icon-192x192.png" type="image/x-icon">
-
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
-  <link rel="stylesheet" href="assets/css/styles.css">
-  <link rel="manifest" href="manifest.json" />
   <title>Budget Tracker</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="shortcut icon" href="assets/icons/icon-192x192.png" type="image/x-icon" >
+  <link rel="stylesheet" href="assets/css/styles.css" >
+    <!-- <script src='./dist/main.bundle.js' defer ></script> -->
+  <!-- <link rel="stylesheet" href="assets/css/vendor/font-awesome.css" > -->
 </head>
 <body>
   <div class="wrapper">
-      
-      
     <div class="total">
       <div class="total">Your total is: $<span id="total">0</span></div>
     </div>
 
     <div class="form">
-      <p class="network-info"></p>
-
+      <p id="network-info" class="success"></p>
       <input type="text" id="t-name" placeholder="Name of transaction" />
       <input type="number" min="0" id="t-amount" placeholder="Transaction amount" />
-      <button id="add-btn"><i class="fa fa-plus buttons"></i> Add Funds</button>
-      <button id="sub-btn"><i class="fa fa-minus"></i> Subtract Funds</button>
+      <button type="button" id="add-btn"><i class="fa fa-plus buttons"></i> Add Funds</button>
+      <button type="button" id="sub-btn"><i class="fa fa-minus"></i> Subtract Funds</button>
       <p class="error"></p>
     </div>
 
@@ -44,21 +41,56 @@
     
     <canvas id="myChart"></canvas>
   </div>
+  <div class="log"></div>
+  
+  <script src="./idb.js"></script>
+  <script src="assets/js/vendor/chart-min.js" defer ></script>
+  <script src="assets/js/script.js" defer ></script>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
-  <script src="assets/js/index.js"></script>
+  <script>
+  (function() {
+    if("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./service-worker.js").then( (registration) => {
+            registration.onupdatefound = () => {
+        const installingWorker = registration.installing;
+        if (installingWorker == null) {
+          return;
+        }
+      installingWorker.onstatechange = () => {
+        if (installingWorker.state === 'installed') {
+            if (navigator.serviceWorker.controller) {
+              // At this point, the updated precached content has been fetched,
+              // but the previous service worker will still serve the older
+              // content until all client tabs are closed.
+              console.log(
+                'New content is available and will be used when all ' +
+                'tabs for this page are closed. See https://bit.ly/CRA-PWA.'
+              );
 
-  <script type="text/javascript">
-    (function() {
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker
-          .register('./service-worker.js')
-          .then(() => console.log('Service Worker registered successfully.'))
-          .catch(error =>
-            console.log('Service Worker registration failed:', error)
-          );
-      }
-    })();
+              // Execute callback
+              // if (config && config.onUpdate) {
+              //   config.onUpdate(registration);
+              // }
+            } else {
+              // At this point, everything has been precached.
+              // It's the perfect time to display a
+              // "Content is cached for offline use." message.
+              console.log('Content is cached for offline use.');
+
+              // Execute callback
+              // if (config && config.onSuccess) {
+              //   config.onSuccess(registration);
+              // }
+            }
+          }
+        };
+      };
+    }).catch(error => console.log("Service Worker registration failed:", error))
+    } else {
+      console.log('No service worker');
+    }
+
+  })();
   </script>
 </body>
 </html>
